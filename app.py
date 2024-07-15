@@ -237,6 +237,38 @@ def post_patient_history():
         return jsonify({"message": f"Failed to save the data: Error: {err}", "status_code": 500, "successful": False}), 500
 
 
+@app.route("/users/history/<int:user_id>", methods=["GET"])
+def get_history(user_id):
+    history = PatientHistory.query.filter_by(user_id=user_id).all()
+
+    if not history:
+        return jsonify({"message": "No data yet", "successful": False, "status_code": 404}), 404
+
+    history_list = []
+
+    for hist in history:
+        history_list.append({
+            "id": hist.id,
+            "user_id": hist.user_id,
+            "page_no": hist.page_no,
+            "questions": hist.questions,
+            "date": hist.date_time.isoformat()
+        })
+
+    user_data_json = json.dumps(history_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
+
+
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200
+
+
+
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 def delete_user(id):
     user = User.query.filter_by(id=id).first()
@@ -252,8 +284,6 @@ def delete_user(id):
         db.session.rollback()
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
     
-
-
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5555, debug=True)

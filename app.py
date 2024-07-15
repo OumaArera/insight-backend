@@ -132,14 +132,13 @@ def login():
 
         # Attempt to load decrypted data as JSON
         login_data = json.loads(decrypted_data)
-        email = login_data.get("email").lower() if data.get('email') else None
 
         # Validate required fields
         if not all(key in login_data for key in ('email', 'password')):
             return jsonify({"message": "Incomplete login data received", "status_code": 400, "successful": False}), 400
 
         # Retrieve the user from the database using the provided email
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=login_data.get("email")).first()
         if not user:
             return jsonify({'message': 'Invalid email or password', 'status_code': 401, 'successful': False}), 401
 

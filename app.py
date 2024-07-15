@@ -167,7 +167,7 @@ def login():
         encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
         iv_b64 = new_iv.hex()
 
-        return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Login successful", "status_code": 200, "successful": True}), 200
+        return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Login successful", "status_code": 201, "successful": True}), 201
 
     except json.JSONDecodeError as json_error:
         return jsonify({'message': f"JSON decoding error: {str(json_error)}", 'status_code': 400, 'successful': False}), 400

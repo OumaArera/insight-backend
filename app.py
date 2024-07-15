@@ -99,6 +99,7 @@ def signup():
             email=user_data['email'],
             role=user_data["role"],
             password=hashed_password,
+            status=user_data["status"],
             created_at=datetime.now(timezone.utc),
             last_login=datetime.now(timezone.utc)
         )

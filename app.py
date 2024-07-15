@@ -45,7 +45,6 @@ def index():
     return '<h1>Insight wellbeing App</h1>'
 
 ENCRYPTION_KEY = app.config["ENCRYPTION_KEY"]
-print(ENCRYPTION_KEY)
 
 def decrypt_message(ciphertext, iv):
     try:
@@ -86,7 +85,7 @@ def signup():
         user_data = json.loads(decrypted_data)
 
         # Validate required fields
-        if not all(key in user_data for key in ('firstName', 'lastName', 'email', 'password')):
+        if not all(key in user_data for key in ('firstName', 'lastName', 'email', 'password', "role")):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
 
         # Check if the user with the provided email already exists
@@ -101,6 +100,7 @@ def signup():
             first_name=user_data['firstName'],
             last_name=user_data['lastName'],
             email=user_data['email'],
+            role=user_data["role"],
             password=hashed_password,
             created_at=datetime.now(timezone.utc),
             last_login=datetime.now(timezone.utc)
@@ -111,13 +111,88 @@ def signup():
         db.session.commit()
 
         # Return success response
-        return jsonify({'message': f'User created successfully: {decrypted_data} {hashed_password}', 'status_code': 201, 'successful': True}), 201
+        return jsonify({'message': f'User created successfully', 'status_code': 201, 'successful': True}), 201
 
     except json.JSONDecodeError as json_error:
         return jsonify({'message': f"JSON decoding error: {str(json_error)}", 'status_code': 400, 'successful': False}), 400
 
     except Exception as e:
         return jsonify({'message': f"Error: {str(e)}", 'status_code': 400, 'successful': False}), 400
+    
+
+@app.route("/users/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    ciphertext = data.get('ciphertext')
+    iv = data.get('iv')
+
+    if not data:
+        return jsonify({"message": "Empty data", "successful": False, "status_code": 400}), 400
+
+    try:
+        decrypted_data = decrypt_message(ciphertext, iv)
+
+        # Attempt to load decrypted data as JSON
+        login_data = json.loads(decrypted_data)
+
+        # Validate required fields
+        if not all(key in login_data for key in ('email', 'password')):
+            return jsonify({"message": "Incomplete login data received", "status_code": 400, "successful": False}), 400
+
+        # Retrieve the user from the database using the provided email
+        user = User.query.filter_by(email=login_data['email']).first()
+        if not user:
+            return jsonify({'message': 'Invalid email or password', 'status_code': 401, 'successful': False}), 401
+
+        # Verify the password
+        if not bcrypt.check_password_hash(user.password, login_data['password']):
+            return jsonify({'message': 'Invalid email or password', 'status_code': 401, 'successful': False}), 401
+
+        # Prepare user data for encryption
+        user_data = {
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+            "role": user.role,
+            "id": user.id,
+            "email": user.email,
+            "lastLogin": user.last_login.isoformat()  
+        }
+
+        user_data_json = json.dumps(user_data)
+        new_iv = os.urandom(16)
+        cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+        padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+        encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+        encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+        iv_b64 = new_iv.hex()
+
+        return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Login successful", "status_code": 200, "successful": True}), 200
+
+    except json.JSONDecodeError as json_error:
+        return jsonify({'message': f"JSON decoding error: {str(json_error)}", 'status_code': 400, 'successful': False}), 400
+
+    except Exception as e:
+        return jsonify({'message': f"Error: {str(e)}", 'status_code': 400, 'successful': False}), 400
+
+
+@app.route("/users/delete/<int:id>", methods=["DELETE"])
+def delete_user(id):
+    user = User.query.filter_by(id=id).first()
+
+    if not user:
+        return jsonify({"message": "User does not exist", "successful": False, "status_code": 404}), 404
+    
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": f"User {user.first_name} {user.last_name} has been deleted", "successful": True, "status_code": 204}), 201
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
+
+
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5555, debug=True)

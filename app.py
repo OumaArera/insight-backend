@@ -4,7 +4,7 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User
+from models import db, User, PatientHistory
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -78,9 +78,6 @@ def signup():
     try:
         decrypted_data = decrypt_message(ciphertext, iv)
 
-        # Print decrypted data for verification
-        print("Decrypted User Data:", decrypted_data)
-
         # Attempt to load decrypted data as JSON
         user_data = json.loads(decrypted_data)
 
@@ -134,19 +131,24 @@ def login():
 
         # Attempt to load decrypted data as JSON
         login_data = json.loads(decrypted_data)
+        email = login_data.get("email").lower() if data.get('email') else None
 
         # Validate required fields
         if not all(key in login_data for key in ('email', 'password')):
             return jsonify({"message": "Incomplete login data received", "status_code": 400, "successful": False}), 400
 
         # Retrieve the user from the database using the provided email
-        user = User.query.filter_by(email=login_data['email']).first()
+        user = User.query.filter_by(email=email).first()
         if not user:
             return jsonify({'message': 'Invalid email or password', 'status_code': 401, 'successful': False}), 401
 
+        if user.status != "active":
+            return jsonify({'message': 'Access denied! Please contact system administrator.', 'status_code': 403, 'successful': False}), 403
         # Verify the password
         if not bcrypt.check_password_hash(user.password, login_data['password']):
             return jsonify({'message': 'Invalid email or password', 'status_code': 401, 'successful': False}), 401
+
+        access_token = create_access_token(identity=user.id)
 
         # Prepare user data for encryption
         user_data = {
@@ -155,7 +157,8 @@ def login():
             "role": user.role,
             "id": user.id,
             "email": user.email,
-            "lastLogin": user.last_login.isoformat()  
+            "lastLogin": user.last_login.isoformat(),
+            "accessToken": access_token  # Include the access token
         }
 
         user_data_json = json.dumps(user_data)
@@ -176,6 +179,64 @@ def login():
         return jsonify({'message': f"Error: {str(e)}", 'status_code': 400, 'successful': False}), 400
 
 
+@app.route("/users/patient-history", methods=["POST"])
+@jwt_required()
+def post_patient_history():
+    data = request.get_json()
+    ciphertext = data.get('ciphertext')
+    iv = data.get('iv')
+
+    try:
+        decrypted_data = decrypt_message(ciphertext, iv)
+
+        user_data = json.loads(decrypted_data)
+
+        if not all(key in user_data for key in ('userId', 'pageNo', 'questions', 'date')):
+            return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
+
+        page_no = user_data.get("pageNo")
+        user_id = user_data.get("userId")
+        questions = user_data.get("questions")
+        date = user_data.get("date")
+
+        try:
+            page_no = int(page_no)
+            user_id = int(user_id)
+            date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+        except ValueError as err:
+            return jsonify({"message": f"Page number must be a number, and date must be of the right format: {err}", "status_code": 400, "successful": False}), 400
+
+        existing_history = PatientHistory.query.filter_by(page_no=page_no, user_id=user_id).first()
+
+        if existing_history:
+            return jsonify({"message": "You already provided this data", "status_code": 400, "successful": False}), 400
+
+        user = User.query.filter_by(id=user_id).first()
+
+        if not user:
+            return jsonify({"message": "Invalid user details!", "status_code": 400, "successful": False}), 400
+        
+        if user.role != "patient" or user.status != "active":
+            return jsonify({"message": "You don't have rights to perform this action", "status_code": 400, "successful": False}), 400
+
+        new_history = PatientHistory(
+            user_id=user_id,
+            page_no=page_no,
+            date=date,
+            questions=questions
+        )
+
+        db.session.add(new_history)
+        db.session.commit()
+
+        return jsonify({"message": "Data saved successfully.", "status_code": 201, "successful": True}), 201
+
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to save the data: Error: {err}", "status_code": 500, "successful": False}), 500
+
+
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 def delete_user(id):
     user = User.query.filter_by(id=id).first()
@@ -190,7 +251,7 @@ def delete_user(id):
     except Exception as err:
         db.session.rollback()
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
-
+    
 
 
 

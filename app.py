@@ -223,7 +223,7 @@ def post_patient_history():
         new_history = PatientHistory(
             user_id=user_id,
             page_no=page_no,
-            date=date,
+            date_time=date,
             questions=questions
         )
 

@@ -439,7 +439,7 @@ def pause_task(id):
 
 
 @app.route("/users/sessions", methods=["POST"])
-# @jwt_required()
+@jwt_required()
 def create_sessions():
     data = request.get_json()
 

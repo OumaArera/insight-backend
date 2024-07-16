@@ -324,7 +324,7 @@ def create_task():
             # date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
             # start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
             # end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
-            duration = float(user_data.get("duration"))
+            # duration = float(user_data.get("duration"))
 
         except ValueError as err:
             return jsonify({"message": f"Provide the correct date and time format: {err}", "status_code": 400, "successful": False}), 400
@@ -336,7 +336,7 @@ def create_task():
             activities=user_data.get("activities"),
             date_time=user_data.get("dateTime"),
             status=user_data.get("status"),
-            duration=duration,
+            duration=user_data.get("duration"),
             start_time=user_data.get("startTime"),
             end_time=user_data.get("endTime"),
             progress=user_data.get("progress"),

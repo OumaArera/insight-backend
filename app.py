@@ -180,7 +180,7 @@ def login():
 
 
 @app.route("/users", methods=["GET"])
-@jwt_required()
+# @jwt_required()
 def get_users():
     users = User.query.all()
 
@@ -193,11 +193,11 @@ def get_users():
         if user.status == "active":
             users_list.append({
                 "userId": user.id,
-                "firstName": user.firstName,
-                "lastName": user.lastName,
+                "firstName": user.first_name,
+                "lastName": user.last_name,
                 "role": user.role,
                 "email": user.email,
-                "registrationDate": user.created_at
+                "registrationDate": user.created_at.isoformat()
             })
     user_data_json = json.dumps(users_list)
     new_iv = os.urandom(16)
@@ -210,6 +210,8 @@ def get_users():
 
 
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200  
+
+    
 
 @app.route("/users/patient-history", methods=["POST"])
 @jwt_required()

@@ -314,17 +314,17 @@ def create_task():
         decrypted_data = decrypt_message(ciphertext, iv)
         user_data = json.loads(decrypted_data)
 
-        required_keys = ['activities', 'dateTime', 'status', 'duration', 'startTime', 'endTime', 'progress', 'remainingTime', 'doctorId', 'patientID', 'patientName']
+        required_keys = ['activities', 'dateTime', 'status', 'duration', 'startTime', 'endTime', 'progress', 'remainingTime', 'doctorId', 'patientId', 'patientName']
         if not all(key in user_data for key in required_keys):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
 
         try:
             doctor_id = int(user_data.get("doctorId"))
-            patient_id = int(user_data.get("patientID"))
-            # date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
-            # start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
-            # end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
-            # duration = float(user_data.get("duration"))
+            patient_id = int(user_data.get("patientId"))
+            date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
+            start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
+            end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
+            duration = float(user_data.get("duration"))
 
         except ValueError as err:
             return jsonify({"message": f"Provide the correct date and time format: {err}", "status_code": 400, "successful": False}), 400
@@ -334,11 +334,11 @@ def create_task():
             patient_id=patient_id,
             patient_name=user_data.get("patientName"),
             activities=user_data.get("activities"),
-            date_time=user_data.get("dateTime"),
+            date_time=date,
             status=user_data.get("status"),
-            duration=user_data.get("duration"),
-            start_time=user_data.get("startTime"),
-            end_time=user_data.get("endTime"),
+            duration=duration,
+            start_time=start_time,
+            end_time=end_time,
             progress=user_data.get("progress"),
             remaining_time=user_data.get("remainingTime")
         )

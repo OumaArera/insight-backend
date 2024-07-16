@@ -439,7 +439,7 @@ def pause_task(id):
 
 
 @app.route("/users/sessions", methods=["POST"])
-@jwt_required()
+# @jwt_required()
 def create_sessions():
     data = request.get_json()
 
@@ -466,7 +466,7 @@ def create_sessions():
         ).first()
 
         if overlapping_session:
-            return jsonify({"message": "There is already another session for the given physician within the specified time.", "successful": False, "status_code": 400}), 400
+            return jsonify({"message": "There is already another session at the specified time", "successful": False, "status_code": 400}), 400
 
     except (ValueError, TypeError) as e:
         return jsonify({"message": f"Invalid data type provided: {str(e)}", "successful": False, "status_code": 400}), 400

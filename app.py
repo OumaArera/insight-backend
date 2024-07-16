@@ -451,11 +451,11 @@ def create_sessions():
         physician_id = int(data['physicianId'])
         available = bool(data['available'])
         location = str(data['location'])
-        meeting_url = str(data['meetingUrl'])if 'meetingUrl' in data else None
-        meeting_location = str(data['meetingLocation'])if 'meetingLocation' in data else None
-        start_time = datetime.strptime(data['start_time'], "%Y-%m-%d %H:%M:%S")
-        end_time = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M:%S")
-        session_time = datetime.strptime(data['session_time'], "%Y-%m-%d %H:%M:%S")
+        meeting_url = str(data['meetingUrl']) if 'meetingUrl' in data else None
+        meeting_location = str(data['meetingLocation']) if 'meetingLocation' in data else None
+        start_time = datetime.strptime(data['start_time'], "%Y-%m-%d %H:%M")
+        end_time = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M")
+        session_time = datetime.strptime(data['session_time'], "%Y-%m-%d %H:%M")
         patient_id = int(data['patient_id']) if 'patient_id' in data else None
 
         # Check for overlapping sessions for the same physician
@@ -490,8 +490,6 @@ def create_sessions():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Failed to create session: {str(e)}", "successful": False, "status_code": 500}), 500
-
-
 @app.route("/users/all/sessions", methods=["GET"])
 # @jwt_required()
 def get_all_sessions():

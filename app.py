@@ -349,6 +349,44 @@ def create_task():
         return jsonify({"message": f"Failed to add the data. Error: {err}", "status_code": 500, "successful": False}), 500
 
 
+@app.route("/users/tasks/<int:id>", methods=["GET"])
+@jwt_required()
+def get_tasks(id):
+    tasks = Task.query.filter_by(patient_id=id).all()
+
+    if not tasks:
+        return jsonify({"message": "You have no tasks yet", "successful": False, "status_code": 404}), 404
+
+    tasks_list = []
+
+    for task in tasks:
+        if task.status == "pending":
+            tasks_list.append({
+                "id": task.id,
+                "doctorId": task.doctor_id,
+                "patientId": task.patient_id,
+                "patientName": task.patient_name,
+                "activities": task.activities,
+                "dateTime": task.date_time.isoformat() if task.date_time else None,
+                "status": task.status,
+                "duration": task.duration,
+                "startTime": task.start_time.isoformat() if task.start_time else None,
+                "endTime": task.end_time.isoformat() if task.end_time else None,
+                "progress": task.progress,
+                "remainingTime": task.remaining_time
+            })
+
+    user_data_json = json.dumps(tasks_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
+
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

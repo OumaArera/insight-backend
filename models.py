@@ -48,3 +48,21 @@ class Task(db.Model):
 
     patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('patient', lazy=True))
     doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('doctor', lazy=True))
+
+class Session(db.Model):
+    __tablename__ = "sessions"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    physician_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    available = db.Column(db.Boolean, nullable=False)
+    location = db.Column(db.String(50), nullable=False)
+    meeting_url= db.Column(db.String(200), nullable=False)
+    meeting_location= db.Column(db.String(200), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    session_time = db.Column(db.DateTime, nullable=False)
+    patient_id = db.Column(db.Integer, nullable=True)
+
+    physician = db.relationship('User', backref=db.backref('sessions', lazy=True))
+
+

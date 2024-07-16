@@ -4,7 +4,7 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User, PatientHistory, Task
+from models import db, User, PatientHistory, Task, Session
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -437,6 +437,59 @@ def pause_task(id):
         db.session.rollback()
         return jsonify({"message": f"Failed to pause task. Error: {str(err)}", "successful": False, "status_code": 500}), 500
 
+
+@app.route("/users/sessions", methods=["POST"])
+@jwt_required()
+def create_sessions():
+    data = request.get_json()
+
+    required_fields = ['physicianId', 'available', "location", "meetingUrl", "meetingLocation", "start_time", "end_time", "session_time"]
+    if not all(field in data for field in required_fields):
+        return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
+
+    try:
+        physician_id = int(data['physicianId'])
+        available = bool(data['available'])
+        location = str(data['location'])
+        meeting_url = str(data['meetingUrl'])
+        meeting_location = str(data['meetingLocation'])
+        start_time = datetime.strptime(data['start_time'], "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M:%S")
+        session_time = datetime.strptime(data['session_time'], "%Y-%m-%d %H:%M:%S")
+        patient_id = int(data['patient_id']) if 'patient_id' in data else None
+
+        # Check for overlapping sessions for the same physician
+        overlapping_session = Session.query.filter(
+            Session.physician_id == physician_id,
+            Session.start_time < end_time,
+            Session.end_time > start_time
+        ).first()
+
+        if overlapping_session:
+            return jsonify({"message": "There is already another session for the given physician within the specified time.", "successful": False, "status_code": 400}), 400
+
+    except (ValueError, TypeError) as e:
+        return jsonify({"message": f"Invalid data type provided: {str(e)}", "successful": False, "status_code": 400}), 400
+
+    new_session = Session(
+        physician_id=physician_id,
+        available=available,
+        location=location,
+        meeting_url=meeting_url,
+        meeting_location=meeting_location,
+        start_time=start_time,
+        end_time=end_time,
+        session_time=session_time,
+        patient_id=patient_id
+    )
+
+    try:
+        db.session.add(new_session)
+        db.session.commit()
+        return jsonify({"message": "Session created successfully", "successful": True, "status_code": 201}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to create session: {str(e)}", "successful": False, "status_code": 500}), 500
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

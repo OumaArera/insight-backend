@@ -389,7 +389,28 @@ def get_tasks(id):
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200
 
 
+@app.route("/users/update/task/<int:id>", methods=["PUT"])
+@jwt_required()
+def update_task(id):
+    task = Task.query.filter_by(id=id).first()
+
+    if not task:
+        return jsonify({"message": "Task does not exist", "successful": False, "status_code": 404}), 404
+    
+    task.status = "complete"
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Task updated successfully", "successful": True, "status_code": 200}), 200
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to update the task. Error: {err}", "successful": False, "status_code": 500}), 500
+
+
+
+
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
+@jwt_required()
 def delete_user(id):
     user = User.query.filter_by(id=id).first()
 
@@ -404,6 +425,8 @@ def delete_user(id):
         db.session.rollback()
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
     
+
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5555, debug=True)

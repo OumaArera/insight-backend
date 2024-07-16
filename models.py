@@ -43,8 +43,8 @@ class Task(db.Model):
     duration = db.Column(db.Float, nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
-    progress = db.Column(db.Integer, nullable=False)
-    remaining_time = db.Column(db.Integer, nullable=False)
+    progress = db.Column(db.Float, nullable=False)
+    remaining_time = db.Column(db.Float, nullable=False)
 
     patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('patient', lazy=True))
     doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('doctor', lazy=True))

@@ -492,6 +492,40 @@ def create_sessions():
         return jsonify({"message": f"Failed to create session: {str(e)}", "successful": False, "status_code": 500}), 500
 
 
+@app.route("/users/all/sessions", methods=["GET"])
+# @jwt_required()
+def get_all_sessions():
+    try:
+        # Query for all sessions where available is True
+        sessions = Session.query.filter_by(available=True).all()
+
+        if not sessions:
+            return jsonify({"message": "No sessions available", "successful": False, "status_code": 404}), 404
+
+        # Serialize session data
+        session_list = []
+        for session in sessions:
+            session_data = {
+                "id": session.id,
+                "physicianId": session.physician_id,
+                "available": session.available,
+                "location": session.location,
+                "meetingUrl": session.meeting_url,
+                "meetingLocation": session.meeting_location,
+                "start_time": session.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": session.end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "session_time": session.session_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "patient_id": session.patient_id
+            }
+            session_list.append(session_data)
+
+        return jsonify({"sessions": session_list, "successful": True, "status_code": 200}), 200
+
+    except Exception as e:
+        return jsonify({"message": f"Failed to retrieve sessions: {str(e)}", "successful": False, "status_code": 500}), 500
+
+
+
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()
 def delete_user(id):

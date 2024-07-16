@@ -40,9 +40,24 @@ bcrypt = Bcrypt(app)
 api = Api(app)
 CORS(app)
 
+blacklist = set()
+
 @app.route('/')
 def index():
     return '<h1>Insight wellbeing App</h1>'
+
+@app.route("/users/logout", methods=["POST"])
+@jwt_required()
+def logout_user():
+
+    jti = get_jwt()["jti"]
+    blacklist.add(jti)
+
+    response = make_response(jsonify({"message": "Logout successful.", "successful": True, "status_code": 201}))
+
+    unset_jwt_cookies(response)
+
+    return response, 201
 
 ENCRYPTION_KEY = app.config["ENCRYPTION_KEY"]
 

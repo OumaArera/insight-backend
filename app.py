@@ -451,8 +451,8 @@ def create_sessions():
         physician_id = int(data['physicianId'])
         available = bool(data['available'])
         location = str(data['location'])
-        meeting_url = str(data['meetingUrl'])
-        meeting_location = str(data['meetingLocation'])
+        meeting_url = str(data['meetingUrl'])if 'meetingUrl' in data else None
+        meeting_location = str(data['meetingLocation'])if 'meetingLocation' in data else None
         start_time = datetime.strptime(data['start_time'], "%Y-%m-%d %H:%M:%S")
         end_time = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M:%S")
         session_time = datetime.strptime(data['session_time'], "%Y-%m-%d %H:%M:%S")

@@ -393,7 +393,7 @@ def get_tasks(id):
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200
 
 
-@app.route("/users/update/task/<int:id>", methods=["PUT"])
+@app.route("/users/update/task/<int:id>", methods=["GET"])
 @jwt_required()
 def update_task(id):
     task = Task.query.filter_by(id=id).first()
@@ -410,6 +410,32 @@ def update_task(id):
         db.session.rollback()
         return jsonify({"message": f"Failed to update the task. Error: {err}", "successful": False, "status_code": 500}), 500
 
+
+@app.route("/users/pause/task/<int:id>", methods=["PUT"])
+@jwt_required()
+def pause_task(id):
+    data = request.get_json()
+
+    # Check if task exists before proceeding
+    task = Task.query.filter_by(id=id).first()
+    if not task:
+        return jsonify({"message": "Task does not exist", "successful": False, "status_code": 404}), 404
+    
+    # Check if required data is provided
+    if not all(key in data for key in ('remaining_time', 'progress')):
+        return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
+
+    # Update task fields
+    task.progress = data.get("progress")
+    task.remaining_time = data.get("remaining_time")
+
+    # Commit changes to the database
+    try:
+        db.session.commit()
+        return jsonify({"message": "Task paused successfully", "successful": True, "status_code": 200}), 200
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to pause task. Error: {str(err)}", "successful": False, "status_code": 500}), 500
 
 
 

@@ -312,8 +312,8 @@ def create_task():
 
     try:
         decrypted_data = decrypt_message(ciphertext, iv)
-
         user_data = json.loads(decrypted_data)
+
         required_keys = ['activities', 'dateTime', 'status', 'duration', 'startTime', 'endTime', 'progress', 'remainingTime', 'doctorId', 'patientID', 'patientName']
         if not all(key in user_data for key in required_keys):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
@@ -322,8 +322,8 @@ def create_task():
             doctor_id = int(user_data.get("doctorId"))
             patient_id = int(user_data.get("patientID"))
             date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
-            start_time = datetime.strptime(user_data.get("startTime"), "%I:%M %p")
-            end_time = datetime.strptime(user_data.get("endTime"), "%I:%M %p")
+            start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
+            end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
             duration = float(user_data.get("duration"))
 
         except ValueError as err:
@@ -342,8 +342,10 @@ def create_task():
             progress=user_data.get("progress"),
             remaining_time=user_data.get("remainingTime")
         )
+
         db.session.add(new_task)
         db.session.commit()
+
         return jsonify({"message": "Task added successfully", "status_code": 201, "successful": True}), 201
 
     except Exception as err:

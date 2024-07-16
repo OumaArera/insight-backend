@@ -4,7 +4,7 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User, PatientHistory
+from models import db, User, PatientHistory, Task
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -179,6 +179,38 @@ def login():
         return jsonify({'message': f"Error: {str(e)}", 'status_code': 400, 'successful': False}), 400
 
 
+@app.route("/users", methods=["GET"])
+@jwt_required()
+def get_users():
+    users = User.query.all()
+
+    if not users:
+        return jsonify({"message": "No users yet", "successful": False, "status_code": 404}), 404
+    
+    users_list = []
+
+    for user in users:
+        if user.status == "active":
+            users_list.append({
+                "userId": user.id,
+                "firstName": user.firstName,
+                "lastName": user.lastName,
+                "role": user.role,
+                "email": user.email,
+                "registrationDate": user.created_at
+            })
+    user_data_json = json.dumps(users_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
+
+
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200  
+
 @app.route("/users/patient-history", methods=["POST"])
 @jwt_required()
 def post_patient_history():
@@ -238,6 +270,7 @@ def post_patient_history():
 
 
 @app.route("/users/history/<int:user_id>", methods=["GET"])
+@jwt_required()
 def get_history(user_id):
     history = PatientHistory.query.filter_by(user_id=user_id).all()
 
@@ -266,6 +299,55 @@ def get_history(user_id):
 
 
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200
+
+
+@app.route("/users/task", methods=["POST"])
+@jwt_required()
+def create_task():
+    data = request.get_json()
+    ciphertext = data.get('ciphertext')
+    iv = data.get('iv')
+
+    try:
+        decrypted_data = decrypt_message(ciphertext, iv)
+
+        user_data = json.loads(decrypted_data)
+        required_keys = ['activities', 'dateTime', 'status', 'duration', 'startTime', 'endTime', 'progress', 'remainingTime', 'doctorId', 'patientID', 'patientName']
+        if not all(key in user_data for key in required_keys):
+            return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
+
+        try:
+            doctor_id = int(user_data.get("doctorId"))
+            patient_id = int(user_data.get("patientID"))
+            date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
+            start_time = datetime.strptime(user_data.get("startTime"), "%I:%M %p")
+            end_time = datetime.strptime(user_data.get("endTime"), "%I:%M %p")
+            duration = float(user_data.get("duration"))
+
+        except ValueError as err:
+            return jsonify({"message": f"Provide the correct date and time format: {err}", "status_code": 400, "successful": False}), 400
+
+        new_task = Task(
+            doctor_id=doctor_id,
+            patient_id=patient_id,
+            patient_name=user_data.get("patientName"),
+            activities=user_data.get("activities"),
+            date_time=date,
+            status=user_data.get("status"),
+            duration=duration,
+            start_time=start_time,
+            end_time=end_time,
+            progress=user_data.get("progress"),
+            remaining_time=user_data.get("remainingTime")
+        )
+        db.session.add(new_task)
+        db.session.commit()
+        return jsonify({"message": "Task added successfully", "status_code": 201, "successful": True}), 201
+
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to add the data. Error: {err}", "status_code": 500, "successful": False}), 500
+
 
 
 

@@ -321,9 +321,9 @@ def create_task():
         try:
             doctor_id = int(user_data.get("doctorId"))
             patient_id = int(user_data.get("patientID"))
-            date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
-            start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
-            end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
+            # date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
+            # start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
+            # end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
             duration = float(user_data.get("duration"))
 
         except ValueError as err:
@@ -334,11 +334,11 @@ def create_task():
             patient_id=patient_id,
             patient_name=user_data.get("patientName"),
             activities=user_data.get("activities"),
-            date_time=date,
+            date_time=user_data.get("dateTime"),
             status=user_data.get("status"),
             duration=duration,
-            start_time=start_time,
-            end_time=end_time,
+            start_time=user_data.get("startTime"),
+            end_time=user_data.get("endTime"),
             progress=user_data.get("progress"),
             remaining_time=user_data.get("remainingTime")
         )

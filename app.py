@@ -491,7 +491,7 @@ def create_sessions():
         db.session.rollback()
         return jsonify({"message": f"Failed to create session: {str(e)}", "successful": False, "status_code": 500}), 500
 @app.route("/users/all/sessions", methods=["GET"])
-# @jwt_required()
+@jwt_required()
 def get_all_sessions():
     try:
         # Query for all sessions where available is True

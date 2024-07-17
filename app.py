@@ -9,7 +9,6 @@ from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from werkzeug.utils import secure_filename
 from Crypto.Cipher import AES 
 from Crypto.Util.Padding import unpad
 import base64
@@ -195,7 +194,7 @@ def login():
 
 
 @app.route("/users", methods=["GET"])
-# @jwt_required()
+@jwt_required()
 def get_users():
     users = User.query.all()
 
@@ -627,6 +626,66 @@ def get_all_tasks(id):
         )
 
     return jsonify({"tasks": tasks_list, "message": "Tasks retrieved successfully", "successful": True, "status_code": 200}), 200
+
+
+@app.route("/users/pending/sessions/<int:id>", methods=["GET"])
+@jwt_required()
+def get_pending_sessions(id):
+    sessions = Session.query.filter(Session.physician_id==id, Session.available==True).all()
+
+    if not sessions:
+        return jsonify({"message": "No pending sessions found for the specified id", "successful": False, "status_code": 404}), 404
+
+
+    formatted_sessions = []
+    for session in sessions:
+        formatted_sessions.append({
+            "id": session.id,
+            "physician_id": session.physician_id,
+            "available": session.available,
+            "location": session.location,
+            "meeting_url": session.meeting_url,
+            "meeting_location": session.meeting_location,
+            "start_time": session.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "end_time": session.end_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "session_time": session.session_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "patient_id": session.patient_id
+        })
+    
+    return jsonify({"sessions": formatted_sessions, "message": "Upcoming sessions retrieved successfully", "successful": True, "status_code": 200}), 200
+
+
+@app.route("/users/update/session/<int:id>", methods=["PUT"])
+@jwt_required()
+def update_sessions(id):
+    data = request.get_json()
+    start_time = data.get("startTime")
+    end_time = data.get("endTime")
+
+    if not start_time or not end_time:
+        return jsonify({"message": "You provided no data", "successful": False, "status_code": 400}), 400
+    
+    try:
+        start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')
+        end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')
+    except ValueError as e:
+        return jsonify({"message": f"Invalid date format: {e}", "successful": False, "status_code": 400}), 400
+
+    session = Session.query.filter_by(id=id).first()
+
+    if not session:
+        return jsonify({"message": "No pending sessions found for the specified id", "successful": False, "status_code": 404}), 404
+
+    session.start_time = start_time
+    session.session_time = start_time
+    session.end_time = end_time
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Session saved successfully", "successful": True, "status_code": 200}), 200
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to update session: {err}", "successful": False, "status_code": 500}), 500
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

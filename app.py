@@ -699,11 +699,13 @@ def get_patients_history():
     patients_history_list = []
 
     for patient in patients:
+        patient_data = User.query.filter_by(id=patient.user_id).first()
         patients_history_list.append({
             "id": patient.id,
             "patientId": patient.user_id,
             "pageNo": patient.page_no,
             "history": patient.questions,
+            "patientName": f"{patient_data.first_name} {patient_data.last_name}",
             "dateTime": patient.date_time.isoformat()
         })
 

@@ -570,13 +570,16 @@ def book_session(id):
 @app.route("/users/get/booking/<int:id>", methods=["GET"])
 @jwt_required()
 def get_patient_booking(id):
+    current_time = datetime.now()
+    
     sessions = Session.query.filter(
         (Session.patient_id == id) | (Session.physician_id == id),
-        Session.available == False
+        Session.available == False,
+        Session.start_time > current_time 
     ).all()
     
     if not sessions:
-        return jsonify({"message": "No sessions found for the specified id", "successful": False, "status_code": 404}), 404
+        return jsonify({"message": "No upcoming sessions found for the specified id", "successful": False, "status_code": 404}), 404
     
     formatted_sessions = []
     for session in sessions:
@@ -592,8 +595,8 @@ def get_patient_booking(id):
             "patient_id": session.patient_id
         })
     
-    return jsonify({"sessions": formatted_sessions, "message": "Sessions retrieved successfully", "successful": True, "status_code": 200}), 200
-    
+    return jsonify({"sessions": formatted_sessions, "message": "Upcoming sessions retrieved successfully", "successful": True, "status_code": 200}), 200
+
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()

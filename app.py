@@ -598,6 +598,37 @@ def get_patient_booking(id):
     return jsonify({"sessions": formatted_sessions, "message": "Upcoming sessions retrieved successfully", "successful": True, "status_code": 200}), 200
 
 
+@app.route("/users/all/tasks/<int:id>", methods=["GET"])
+@jwt_required()
+def get_all_tasks(id):
+    tasks = Task.query.filter_by(doctor_id=id).all()
+
+    if not tasks:
+        return jsonify({"message": "No tasks yet", "successful": False, "status_code": 404}), 404
+
+    tasks_list = []
+
+    for task in tasks:
+        tasks_list.append(
+            {
+                "id": task.id,
+                "doctorId":task.doctor_id,
+                "patientId": task.patient_id,
+                "patientName":task.patient_name,
+                "activities":task.activities,
+                "dateTime": task.date_time,
+                "status": task.status,
+                "duration": task.duration,
+                "startTime": task.start_time,
+                "endTime": task.end_time,
+                "progress": task.progress,
+                "remainingTime": task.remaining_time
+            }
+        )
+
+    return jsonify({"sessions": tasks_list, "message": "Tasks retrieved successfully", "successful": True, "status_code": 200}), 200
+
+
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()
 def delete_user(id):

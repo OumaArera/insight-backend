@@ -75,4 +75,7 @@ class Presciption(db.Model):
     prescription = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), nullable=False)
 
+    patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('patient_', lazy=True))
+    doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('doctor_', lazy=True))
+
 

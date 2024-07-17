@@ -772,6 +772,42 @@ def post_prescription():
         return jsonify({"message": f"Failed to add prescription. Error: {err}", "successful": False, "status_code": 500}), 500
 
 
+@app.route("/users/get/prescription/<int:id>", methods=["GET"])
+@jwt_required()
+def get_prescriptions(id):
+    prescriptions = Presciption.query.filter_by(patient_id=id).all()
+
+    if not prescriptions:
+        return jsonify({"message": "You have no precriptions yet", "successful": False, "status_code": 404}), 404
+    precriptions_list =[]
+    for prescrip in prescriptions:
+        doctor = User.query.filter_by(id=prescrip.doctor_id).first()
+        precriptions_list.append({
+            "id":prescrip.id,
+            "doctorId": prescrip.doctor_id,
+            "patientId": prescrip.patient_id,
+            "date": prescrip.date.isoformat(),
+            "prescription": prescrip.prescription,
+            "status": prescrip.status,
+            "doctorName": f"{doctor.first_name} {doctor.last_name}"
+        })
+
+    user_data_json = json.dumps(precriptions_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
+
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
+
+
+    # return jsonify({"prescription": precriptions_list, "message": "Prescription retrieved successfully", "successful": True, "status_code": 200}), 200
+
+
+
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()
 def delete_user(id):

@@ -4,7 +4,7 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User, PatientHistory, Task, Session
+from models import db, User, PatientHistory, Task, Session, Presciption
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -172,7 +172,7 @@ def login():
             "id": user.id,
             "email": user.email,
             "lastLogin": user.last_login.isoformat(),
-            "accessToken": access_token  # Include the access token
+            "accessToken": access_token  
         }
 
         user_data_json = json.dumps(user_data)
@@ -686,6 +686,88 @@ def update_sessions(id):
     except Exception as err:
         db.session.rollback()
         return jsonify({"message": f"Failed to update session: {err}", "successful": False, "status_code": 500}), 500
+
+
+@app.route("/users/patient/history", methods=["GET"])
+@jwt_required()
+def get_patients_history():
+    patients = PatientHistory.query.all()
+
+    if not patients:
+        return jsonify({"message": "No data available", "successful": False, "status_code": 404}), 404
+    
+    patients_history_list = []
+
+    for patient in patients:
+        patients_history_list.append({
+            "id": patient.id,
+            "patientId": patient.user_id,
+            "pageNo": patient.page_no,
+            "history": patient.questions,
+            "dateTime": patient.date_time.isoformat()
+        })
+
+    user_data_json = json.dumps(patients_history_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
+
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
+
+
+@app.route("/users/prescription", methods=["POST"])
+@jwt_required()
+def post_prescription():
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"message": "Empty data", "successful": False, "status_code": 400}), 400
+    
+    ciphertext = data.get('ciphertext')
+    iv = data.get('iv')
+
+    try:
+        decrypted_data = decrypt_message(ciphertext, iv)
+
+        prescription = json.loads(decrypted_data)
+
+        if not all(key in prescription for key in ('date', 'patientId', 'doctorId', 'prescription')):
+            return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
+
+
+        try:
+            date = datetime.strptime(prescription.get("date"), "%Y-%m-%dT%H:%M:%S.%fZ")
+            patient_id = int(prescription.get("patientId"))
+            doctor_id = int(prescription.get("doctorId"))
+            prescription_details = str(prescription.get("prescription"))
+
+        except ValueError as err:
+            return jsonify({"message": f"Provide the right data format. Error: {err}", "successful": False, "status_code": 400}), 400
+
+        doctor = User.query.filter_by(id=doctor_id).first()
+        patient = User.query.filter_by(id=patient_id).first()
+
+        if not doctor or not patient:
+            return jsonify({"message": "Doctor or patient do not exist", "successful": False, "status_code": 400}), 400
+
+        status = "pending"
+        new_prescription = Presciption(
+            date=date,
+            doctor_id=doctor_id,
+            patient_id=patient_id,
+            prescription=prescription_details,
+            status=status
+        )
+        db.session.add(new_prescription)
+        db.session.commit()
+        return jsonify({"message": "Prescription added successfully", "successful": True, "status_code": 201}), 201
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to add prescription. Error: {err}", "successful": False, "status_code": 500}), 500
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

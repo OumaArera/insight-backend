@@ -65,4 +65,14 @@ class Session(db.Model):
 
     physician = db.relationship('User', backref=db.backref('sessions', lazy=True))
 
+class Presciption(db.Model):
+    __tablename__ = "prescriptions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+    prescription = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False)
+
 

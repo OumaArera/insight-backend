@@ -626,7 +626,7 @@ def get_all_tasks(id):
             }
         )
 
-    return jsonify({"sessions": tasks_list, "message": "Tasks retrieved successfully", "successful": True, "status_code": 200}), 200
+    return jsonify({"tasks": tasks_list, "message": "Tasks retrieved successfully", "successful": True, "status_code": 200}), 200
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

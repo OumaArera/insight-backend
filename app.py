@@ -538,6 +538,34 @@ def get_all_sessions():
         return jsonify({"message": f"Failed to retrieve sessions: {str(e)}", "successful": False, "status_code": 500}), 500
 
 
+@app.route("/users/book/session/<int:id>", methods=["PUT"])
+@jwt_required()
+def book_session(id):
+    data = request.get_json()
+    user_id = data.get("userId")
+
+    if not user_id:
+        return jsonify({"message": "You provided incomplete data", "successful": False, "status_code": 400}), 400
+
+    session = Session.query.filter_by(id=id).first()
+
+    if not session:
+        return jsonify({"message": "Session does not exist", "successful": False, "status_code": 404}), 404
+    
+    if not session.available:
+        return jsonify({"message": "This session is already booked", "successful": False, "status_code": 400}), 400
+
+    session.available = False
+    session.patient_id = user_id
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Session booked successfully", "successful": True, "status_code": 200}), 200
+    except Exception as err:
+        db.session.rollback()
+        app.logger.error(f"Error booking session: {err}")
+        return jsonify({"message": f"There was an error booking the session. Error: {err}", "successful": False, "status_code": 500}), 500
+
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()

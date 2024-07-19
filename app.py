@@ -4,7 +4,7 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User, PatientHistory, Task, Session, Presciption, Impression
+from models import db, User, PatientHistory, Task, Session, Presciption, Impression, HealthResponse
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -822,17 +822,17 @@ def post_impressions():
     try:
         decrypted_data = decrypt_message(ciphertext, iv)
 
-        prescription = json.loads(decrypted_data)
+        impression = json.loads(decrypted_data)
 
-        if not all(key in prescription for key in ('date', 'patientId', 'doctorId', 'impression')):
+        if not all(key in impression for key in ('date', 'patientId', 'doctorId', 'impression')):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
 
 
         try:
-            date = datetime.strptime(prescription.get("date"), "%Y-%m-%dT%H:%M:%S.%fZ")
-            patient_id = int(prescription.get("patientId"))
-            doctor_id = int(prescription.get("doctorId"))
-            impression = str(prescription.get("impression"))
+            date = datetime.strptime(impression.get("date"), "%Y-%m-%dT%H:%M:%S.%fZ")
+            patient_id = int(impression.get("patientId"))
+            doctor_id = int(impression.get("doctorId"))
+            impression = str(impression.get("impression"))
 
         except ValueError as err:
             return jsonify({"message": f"Provide the right data format. Error: {err}", "successful": False, "status_code": 400}), 400
@@ -854,7 +854,7 @@ def post_impressions():
         return jsonify({"message": "Impression added successfully", "successful": True, "status_code": 201}), 201
     except Exception as err:
         db.session.rollback()
-        return jsonify({"message": f"Failed to add prescription. Error: {err}", "successful": False, "status_code": 500}), 500
+        return jsonify({"message": f"Failed to add impression. Error: {err}", "successful": False, "status_code": 500}), 500
 
 @app.route("/users/get/impression/<int:id>", methods=["GET"])
 @jwt_required()
@@ -871,7 +871,7 @@ def get_impresion(id):
             "doctorId": impresion.doctor_id,
             "patientId": impresion.patient_id,
             "date": impresion.date.isoformat(),
-            "prescription": impresion.prescription,
+            "prescription": impresion.impresion,
             "doctorName": f"{doctor.first_name} {doctor.last_name}"
         })
 
@@ -887,7 +887,51 @@ def get_impresion(id):
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
 
 
-    # return jsonify({"prescription": precriptions_list, "message": "Prescription retrieved successfully", "successful": True, "status_code": 200}), 200
+    # return jsonify({"prescription": impressions_list, "message": "Prescription retrieved successfully", "successful": True, "status_code": 200}), 200
+
+
+@app.route("/users/post/response", methods=["POST"])
+@jwt_required()
+def post_response():
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "Empty data", "successful": False, "status_code": 400}), 400
+    
+    ciphertext = data.get('ciphertext')
+    iv = data.get('iv')
+
+    try:
+        decrypted_data = decrypt_message(ciphertext, iv)
+
+        response = json.loads(decrypted_data)
+
+        if not all(key in response for key in ('date', 'patientId', 'responses')):
+            return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
+
+        try:
+            date = datetime.strptime(response.get("date"), "%Y-%m-%dT%H:%M:%S.%fZ")
+            patient_id = int(response.get("patientId"))
+            responses = str(response.get("responses"))
+
+        except ValueError as err:
+            return jsonify({"message": f"Provide the right data format. Error: {err}", "successful": False, "status_code": 400}), 400
+        patient = User.query.filter_by(id=patient_id).first()
+
+        if not patient:
+            return jsonify({"message": "Patient do not exist", "successful": False, "status_code": 400}), 400
+
+        new_response = HealthResponse(
+            date=date,
+            user_id=patient_id,
+            responses=responses
+        )
+        db.session.add(new_response)
+        db.session.commit()
+        return jsonify({"message": "Response added successfully", "successful": True, "status_code": 201}), 201
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to add response. Error: {err}", "successful": False, "status_code": 500}), 500
+
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

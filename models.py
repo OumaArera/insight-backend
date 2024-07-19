@@ -89,3 +89,13 @@ class Impression(db.Model):
 
     patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('impression_', lazy=True))
     doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('impression', lazy=True))
+
+class HealthResponse(db.Model):
+    __tablename__ = "health_responses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+    responses = db.Column(JSONB, nullable=False)
+
+    patient = db.relationship('User', backref=db.backref('health_responses', lazy=True))

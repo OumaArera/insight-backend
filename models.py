@@ -78,4 +78,14 @@ class Presciption(db.Model):
     patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('patient_', lazy=True))
     doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('doctor_', lazy=True))
 
+class Impression(db.Model):
+    __tablename__ = "impressions"
 
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+    impresion = db.Column(db.Text, nullable=False)
+
+    patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('impression_', lazy=True))
+    doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('impression', lazy=True))

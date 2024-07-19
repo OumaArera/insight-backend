@@ -847,7 +847,7 @@ def post_impressions():
             date=date,
             doctor_id=doctor_id,
             patient_id=patient_id,
-            impression=impression
+            impresion=impression
         )
         db.session.add(new_impression)
         db.session.commit()

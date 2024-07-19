@@ -824,7 +824,7 @@ def post_impressions():
 
         prescription = json.loads(decrypted_data)
 
-        if not all(key in prescription for key in ('date', 'patientId', 'doctorId', 'prescription')):
+        if not all(key in prescription for key in ('date', 'patientId', 'doctorId', 'impression')):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
 
 

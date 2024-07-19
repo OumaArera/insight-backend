@@ -933,6 +933,23 @@ def post_response():
         return jsonify({"message": f"Failed to add response. Error: {err}", "successful": False, "status_code": 500}), 500
 
 
+@app.route("/users/get/response/<int:id>", methods=["GET"])
+@jwt_required()
+def get_response(id):
+    response = HealthResponse.query.filter_by(user_id=id).first()
+
+    if not response:
+        return jsonify({"message": "You have no response", "successful": False, "status_code": 404}), 404
+    
+    current_date = datetime.now(timezone.utc)
+    response_date =  response.date.replace(tzinfo=timezone.utc)
+    date_difference = current_date - response_date
+
+    if date_difference.days < 14:
+        return jsonify({"message": "You already filled this form", "successful": True, "status_code": 200}), 200
+    else:
+        return jsonify({"message": "Kindly fill this form", "successful": False, "status_code": 200}), 200
+
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()

@@ -940,15 +940,16 @@ def get_response(id):
 
     if not response:
         return jsonify({"message": "You have no response", "successful": False, "status_code": 404}), 404
-    
+
     current_date = datetime.now(timezone.utc)
-    response_date =  response.date.replace(tzinfo=timezone.utc)
+    response_date = response.date.replace(tzinfo=timezone.utc)
     date_difference = current_date - response_date
+    next_due_date = response_date + timedelta(days=14)
 
     if date_difference.days < 14:
-        return jsonify({"message": "You already filled this form", "successful": True, "status_code": 200}), 200
+        return jsonify({"message": "You already filled this form", "successful": True, "status_code": 200, "next_due_date": next_due_date.isoformat()}), 200
     else:
-        return jsonify({"message": "Kindly fill this form", "successful": False, "status_code": 200}), 200
+        return jsonify({"message": "Kindly fill this form", "successful": False, "status_code": 400}), 400
 
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])

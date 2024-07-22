@@ -53,6 +53,9 @@ class CompletedTask(db.Model):
     patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
     completed_time = db.Column(db.DateTime, nullable=False)
 
+    patient = db.relationship('User', backref=db.backref('completed_tasks', lazy=True))
+    task = db.relationship('Task', backref=db.backref('completed_tasks_', lazy=True))
+
 
 class Session(db.Model):
     __tablename__ = "sessions"

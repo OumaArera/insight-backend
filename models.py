@@ -33,28 +33,28 @@ class Task(db.Model):
     __tablename__ = "assigned_tasks"
 
     id = db.Column(db.Integer, primary_key=True)
-    doctor_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
-    patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
-    patient_name= db.Column(db.String(200), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    patient_name = db.Column(db.String(200), nullable=False)
     activities = db.Column(JSONB, nullable=False)
     date_time = db.Column(db.DateTime, nullable=False)
     duration = db.Column(db.Float, nullable=False)
     frequency = db.Column(db.Integer, nullable=False)
     
+    patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('assigned_tasks_as_patient', lazy=True))
+    doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('assigned_tasks_as_doctor', lazy=True))
 
-    patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('patient', lazy=True))
-    doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('doctor', lazy=True))
 
 class CompletedTask(db.Model):
     __tablename__ = "completed_tasks"
 
     id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, ForeignKey('assigned_tasks.id'), nullable=False)
-    patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('assigned_tasks.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     completed_time = db.Column(db.DateTime, nullable=False)
 
     patient = db.relationship('User', backref=db.backref('completed_tasks', lazy=True))
-    task = db.relationship('Task', backref=db.backref('completed_tasks_', lazy=True))
+    task = db.relationship('Task', backref=db.backref('completed_tasks', lazy=True))
 
 
 class Session(db.Model):

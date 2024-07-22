@@ -415,49 +415,41 @@ def get_tasks(id):
 
 
 
-@app.route("/users/update/task/<int:id>", methods=["GET"])
+@app.route("/users/update/task", methods=["POST"])
 @jwt_required()
-def update_task(id):
-    task = Task.query.filter_by(id=id).first()
-
-    if not task:
-        return jsonify({"message": "Task does not exist", "successful": False, "status_code": 404}), 404
-    
-    task.status = "complete"
-
-    try:
-        db.session.commit()
-        return jsonify({"message": "Task updated successfully", "successful": True, "status_code": 200}), 200
-    except Exception as err:
-        db.session.rollback()
-        return jsonify({"message": f"Failed to update the task. Error: {err}", "successful": False, "status_code": 500}), 500
-
-
-@app.route("/users/pause/task/<int:id>", methods=["PUT"])
-@jwt_required()
-def pause_task(id):
+def update_task():
     data = request.get_json()
 
-    # Check if task exists before proceeding
-    task = Task.query.filter_by(id=id).first()
-    if not task:
-        return jsonify({"message": "Task does not exist", "successful": False, "status_code": 404}), 404
+    if not data:
+        return jsonify({"message": "Empty data", "successful": False, "status_code": 400}), 400
     
-    # Check if required data is provided
-    if not all(key in data for key in ('remaining_time', 'progress')):
-        return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
+    task_id = data.get("taskId")
+    patient_id = data.get("patientId")
+    completed_time = data.get("completedTime")    
 
-    # Update task fields
-    task.progress = data.get("progress")
-    task.remaining_time = data.get("remaining_time")
+    if not task_id or not patient_id or not completed_time:
+        return jsonify({"message": "Incomplete data", "successful": False, "status_code": 400}), 400
 
-    # Commit changes to the database
+    patient = User.query.filter_by(id=patient_id).first()
+
+    if not patient:
+        return jsonify({"message": "User does not exist", "successful": False, "status_code": 404}), 404
+    
+    new_task = CompletedTask(
+        task_id=task_id,
+        patient_id=patient_id,
+        completed_time=completed_time
+    )
+    
     try:
+        db.session.add(new_task)
         db.session.commit()
-        return jsonify({"message": "Task paused successfully", "successful": True, "status_code": 200}), 200
+        return jsonify({"message": "Task Completed successfully", "successful": True, "status_code": 201}), 201
+    
     except Exception as err:
         db.session.rollback()
-        return jsonify({"message": f"Failed to pause task. Error: {str(err)}", "successful": False, "status_code": 500}), 500
+        return jsonify({"message": f"There was an error {err}", "successful": False, "status_code": 500}), 500
+
 
 
 @app.route("/users/sessions", methods=["POST"])

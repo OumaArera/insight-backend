@@ -30,7 +30,7 @@ class PatientHistory(db.Model):
     user = db.relationship('User', backref=db.backref('patients_history', lazy=True))
 
 class Task(db.Model):
-    __tablename__ = "tasks"
+    __tablename__ = "assigned_tasks"
 
     id = db.Column(db.Integer, primary_key=True)
     doctor_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
@@ -38,15 +38,21 @@ class Task(db.Model):
     patient_name= db.Column(db.String(200), nullable=False)
     activities = db.Column(JSONB, nullable=False)
     date_time = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), nullable=False)
     duration = db.Column(db.Float, nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
-    end_time = db.Column(db.DateTime, nullable=False)
-    progress = db.Column(db.Float, nullable=False)
-    remaining_time = db.Column(db.Float, nullable=False)
+    frequency = db.Column(db.Integer, nullable=False)
+    
 
     patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('patient', lazy=True))
     doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('doctor', lazy=True))
+
+class CompletedTask(db.Model):
+    __tablename__ = "completed_tasks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, ForeignKey('assigned_tasks.id'), nullable=False)
+    patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    completed_time = db.Column(db.DateTime, nullable=False)
+
 
 class Session(db.Model):
     __tablename__ = "sessions"

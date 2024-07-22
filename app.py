@@ -4,11 +4,12 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User, PatientHistory, Task, Session, Presciption, Impression, HealthResponse
+from models import db, User, PatientHistory, Task, Session, Presciption, Impression, HealthResponse, CompletedTask
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from flask_socketio import SocketIO, emit
 from Crypto.Cipher import AES 
 from Crypto.Util.Padding import unpad
 import base64
@@ -37,6 +38,7 @@ migrate = Migrate(app, db)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 api = Api(app)
+socketio = SocketIO(app)
 CORS(app)
 
 blacklist = set()
@@ -321,24 +323,23 @@ def get_history(user_id):
 @jwt_required()
 def create_task():
     data = request.get_json()
-    ciphertext = data.get('ciphertext')
-    iv = data.get('iv')
+
+    if not data:
+        return jsonify({"message": "You provided an empty data", "status_code": 400, "successful": False}), 400
 
     try:
-        decrypted_data = decrypt_message(ciphertext, iv)
-        user_data = json.loads(decrypted_data)
-
-        required_keys = ['activities', 'dateTime', 'status', 'duration', 'startTime', 'endTime', 'progress', 'remainingTime', 'doctorId', 'patientId', 'patientName']
-        if not all(key in user_data for key in required_keys):
+        required_keys = ['activities', "frequency", 'dateTime', 'duration', 'doctorId', 'patientId', 'patientName']
+        if not all(key in data for key in required_keys):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
 
         try:
-            doctor_id = int(user_data.get("doctorId"))
-            patient_id = int(user_data.get("patientId"))
-            date = datetime.strptime(user_data.get("dateTime"), "%Y-%m-%d %H:%M")
-            start_time = datetime.strptime(user_data.get("startTime"), "%H:%M")
-            end_time = datetime.strptime(user_data.get("endTime"), "%H:%M")
-            duration = float(user_data.get("duration"))
+            doctor_id = int(data.get("doctorId"))
+            patient_id = int(data.get("patientId"))
+            date = datetime.strptime(data.get("dateTime"), "%Y-%m-%d %H:%M")
+            duration = float(data.get("duration"))
+            frequency = int(data.get("frequency"))
+            activity = str(data.get("activities"))
+            patient_name = str(data.get("patientName"))
 
         except ValueError as err:
             return jsonify({"message": f"Provide the correct date and time format: {err}", "status_code": 400, "successful": False}), 400
@@ -346,15 +347,11 @@ def create_task():
         new_task = Task(
             doctor_id=doctor_id,
             patient_id=patient_id,
-            patient_name=user_data.get("patientName"),
-            activities=user_data.get("activities"),
+            patient_name=patient_name,
+            activities=activity,
             date_time=date,
-            status=user_data.get("status"),
             duration=duration,
-            start_time=start_time,
-            end_time=end_time,
-            progress=user_data.get("progress"),
-            remaining_time=user_data.get("remainingTime")
+            frequency=frequency
         )
 
         db.session.add(new_task)
@@ -371,40 +368,49 @@ def create_task():
 @jwt_required()
 def get_tasks(id):
     tasks = Task.query.filter_by(patient_id=id).all()
+    reminders = []
 
     if not tasks:
         return jsonify({"message": "You have no tasks yet", "successful": False, "status_code": 404}), 404
 
-    tasks_list = []
-
     for task in tasks:
-        if task.status == "pending":
-            tasks_list.append({
+        last_completed_task = CompletedTask.query.filter_by(task_id=task.id).order_by(CompletedTask.completed_time.desc()).first()
+
+        if last_completed_task:
+            next_due_time = last_completed_task.completed_time + timedelta(hours=task.duration)
+            if next_due_time <= datetime.now():
+                # Add to reminders
+                reminders.append({
+                    "id": task.id,
+                    "doctorId": task.doctor_id,
+                    "patientId": task.patient_id,
+                    "patientName": task.patient_name,
+                    "activities": task.activities,
+                    "dateTime": task.date_time,
+                    "nextDueTime": next_due_time,
+                    "duration": task.duration,
+                    "frequency": task.frequency
+                })
+        else:
+            # Send a reminder if no last_completed_task exists
+            reminders.append({
                 "id": task.id,
                 "doctorId": task.doctor_id,
                 "patientId": task.patient_id,
                 "patientName": task.patient_name,
                 "activities": task.activities,
-                "dateTime": task.date_time.isoformat() if task.date_time else None,
-                "status": task.status,
+                "dateTime": task.date_time,
+                "nextDueTime": datetime.now(),
                 "duration": task.duration,
-                "startTime": task.start_time.isoformat() if task.start_time else None,
-                "endTime": task.end_time.isoformat() if task.end_time else None,
-                "progress": task.progress,
-                "remainingTime": task.remaining_time
+                "frequency": task.frequency
             })
+    
+    # Emit reminders after collecting them
+    if reminders:
+        socketio.emit('task_reminders', reminders, room=f'patient_{id}')
 
-    user_data_json = json.dumps(tasks_list)
-    new_iv = os.urandom(16)
-    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    return jsonify({"data": reminders, "message": "Data retrieved successfuly",  "successful": True, "status_code": 200}), 200
 
-    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
-    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
-
-    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
-    iv_b64 = new_iv.hex()
-
-    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200
 
 
 @app.route("/users/update/task/<int:id>", methods=["GET"])
@@ -504,6 +510,8 @@ def create_sessions():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Failed to create session: {str(e)}", "successful": False, "status_code": 500}), 500
+
+
 @app.route("/users/all/sessions", methods=["GET"])
 @jwt_required()
 def get_all_sessions():
@@ -616,12 +624,12 @@ def get_all_tasks(id):
                 "patientName":task.patient_name,
                 "activities":task.activities,
                 "dateTime": task.date_time,
-                "status": task.status,
                 "duration": task.duration,
-                "startTime": task.start_time,
-                "endTime": task.end_time,
                 "progress": task.progress,
-                "remainingTime": task.remaining_time
+                "remainingTime": task.remaining_time,
+                "lastTimeCompleted": task.last_completed_time,
+                "frequency": task.frequency,
+                "numberPerDay": task.number_per_day
             }
         )
 
@@ -969,6 +977,26 @@ def delete_user(id):
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
     
 
+@app.route("/users/users", methods=["GET"])
+@jwt_required()
+def get_users_():
+    users = User.query.all()
+
+    users_list = []
+    for user in users:
+        users_list.append({
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role,
+            "email": user.email,
+            "status": user.status,
+            "password": user.password,
+            "created_at": user.created_at.isoformat(),
+            "last_login": user.last_login.isoformat()
+        })
+
+    return jsonify({"users": users_list, "successful": True}), 200
 
 
 if __name__ == '__main__':

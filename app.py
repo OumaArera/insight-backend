@@ -341,6 +341,8 @@ def create_task():
             activity = str(data.get("activities"))
             patient_name = str(data.get("patientName"))
 
+            {"activities":"Third Test","dateTime":"2024-07-22 17:27","duration":"2","frequency":"2","doctorId":9,"patientId":8,"patientName":"Ouma Arera"}
+
         except ValueError as err:
             return jsonify({"message": f"Provide the correct date and time format: {err}", "status_code": 400, "successful": False}), 400
 

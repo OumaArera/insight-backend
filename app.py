@@ -4,7 +4,7 @@ from flask_restful import Api
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, get_jwt, unset_jwt_cookies
-from models import db, User, PatientHistory, Task, Session, Presciption, Impression, HealthResponse, CompletedTask
+from models import db, User, PatientHistory, Task, Session, Presciption, Impression, HealthResponse, CompletedTask, RatingAndRemarks
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -966,6 +966,52 @@ def get_response():
     iv_b64 = new_iv.hex()
 
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
+
+@app.route("/users/rating", methods=["POST"])
+@jwt_required()
+def post_rating_and_remarks():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"message": "You provided an empty data", "successful": False, "status_code": 400}), 400
+    
+    ciphertext = data.get("ciphertext")
+    iv = data.get("iv")
+
+    if not ciphertext or not iv:
+        return jsonify({"message": "Incomplete data", "successful": False, "status_code": 400}), 400
+    
+    try:
+        decrypted_data = decrypt_message(ciphertext, iv)
+
+        response = json.loads(decrypted_data)
+
+        if not all(key in response for key in ('patientId', 'doctorId', 'remarks' 'rating')):
+            return jsonify({"message": "Incomplete data, missing required fields", "successful": False, "status_code": 400}), 400
+        
+        try:
+            doctor_id = int(response.get("doctorId"))
+            patient_id = int(response.get("patientId"))
+            remarks = str(response.get("remarks"))
+            rating = dict(response.get("rating"))
+
+        except ValueError as err:
+            return jsonify({"message": f"Invalid data type {err}", "successful": False, "status_code": 400}), 400
+        
+        new_rating = RatingAndRemarks(
+            doctor_id=doctor_id,
+            patient_id=patient_id,
+            remarks=remarks,
+            rating=rating
+        )
+
+        db.session.add(new_rating)
+        db.session.commit()
+
+        return jsonify({"message": "Data added successfully", "successful": True, "status_code": 201}), 201
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to create. Error: {err}", "successful": False, "status_code": 500}), 500
 
 
     

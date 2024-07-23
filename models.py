@@ -107,3 +107,16 @@ class HealthResponse(db.Model):
     responses = db.Column(JSONB, nullable=False)
 
     patient = db.relationship('User', backref=db.backref('health_responses', lazy=True))
+
+
+class RatingAndRemarks(db.Model):
+    __tablename__ = "rating_and_remarks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
+    remarks = db.Column(db.Text, nullable=False)
+    rating = db.Column(JSONB, nullable=False)
+
+    patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('rating_and_remarks', lazy=True))
+    doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('rating_and_remarks_', lazy=True))

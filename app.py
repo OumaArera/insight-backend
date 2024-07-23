@@ -935,24 +935,40 @@ def post_response():
         return jsonify({"message": f"Failed to add response. Error: {err}", "successful": False, "status_code": 500}), 500
 
 
-@app.route("/users/get/response/<int:id>", methods=["GET"])
+@app.route("/users/get/response", methods=["GET"])
 @jwt_required()
-def get_response(id):
-    response = HealthResponse.query.filter_by(user_id=id).first()
+def get_response():
+    responses = HealthResponse.query.all()
 
-    if not response:
-        return jsonify({"message": "You have no response", "successful": False, "status_code": 404}), 404
+    if not responses:
+        return jsonify({"message": "No responses yet", "successful": False, "status_code": 404}), 404
+    
+    responses_list = []
+    
+    for response in responses:
+        patient = User.query.filter_by(id=response.user_id).first()
+        responses_list.append({
+            "id": response.id,
+            "patientId": response.user_id,
+            "patientName": f"{patient.first_name} {patient.last_name}",
+            "dateTime": response.date.isoformat(),
+            "responses": response.responses
+        })
 
-    current_date = datetime.now(timezone.utc)
-    response_date = response.date.replace(tzinfo=timezone.utc)
-    date_difference = current_date - response_date
-    next_due_date = response_date + timedelta(days=14)
+    # return jsonify({"message": "Data retrieved successfully", "data": responses_list, "successful": True, "status_code": 200}), 200
+    user_data_json = json.dumps(responses_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
 
-    if date_difference.days < 14:
-        return jsonify({"message": "You already filled this form", "successful": True, "status_code": 200, "next_due_date": next_due_date.isoformat()}), 200
-    else:
-        return jsonify({"message": "Kindly fill this form", "successful": False, "status_code": 400}), 400
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
 
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
+
+
+    
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()

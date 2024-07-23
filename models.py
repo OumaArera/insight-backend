@@ -117,6 +117,7 @@ class RatingAndRemarks(db.Model):
     patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
     remarks = db.Column(db.Text, nullable=False)
     rating = db.Column(JSONB, nullable=False)
+    date = date = db.Column(db.DateTime, nullable=False)
 
     patient = db.relationship('User', foreign_keys=[patient_id], backref=db.backref('rating_and_remarks', lazy=True))
     doctor = db.relationship('User', foreign_keys=[doctor_id], backref=db.backref('rating_and_remarks_', lazy=True))

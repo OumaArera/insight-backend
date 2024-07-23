@@ -986,7 +986,7 @@ def post_rating_and_remarks():
 
         response = json.loads(decrypted_data)
 
-        if not all(key in response for key in ('patientId', 'doctorId', 'remarks' 'rating')):
+        if not all(key in response for key in ('patientId', 'doctorId', 'remarks', 'rating', "dateTime")):
             return jsonify({"message": "Incomplete data, missing required fields", "successful": False, "status_code": 400}), 400
         
         try:
@@ -994,6 +994,7 @@ def post_rating_and_remarks():
             patient_id = int(response.get("patientId"))
             remarks = str(response.get("remarks"))
             rating = dict(response.get("rating"))
+            date = datetime.strptime(response.get("dateTime"), "%Y-%m-%dT%H:%M:%S.%fZ")
 
         except ValueError as err:
             return jsonify({"message": f"Invalid data type {err}", "successful": False, "status_code": 400}), 400
@@ -1002,7 +1003,8 @@ def post_rating_and_remarks():
             doctor_id=doctor_id,
             patient_id=patient_id,
             remarks=remarks,
-            rating=rating
+            rating=rating,
+            date=date
         )
 
         db.session.add(new_rating)

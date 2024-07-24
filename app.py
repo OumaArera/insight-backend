@@ -1072,10 +1072,10 @@ def remove():
     return jsonify({"message":"removed successfully", "data": data_list}), 200
 
 
-@app.route("/users/monitor", methods=["GET"])
+@app.route("/users/monitor/<int:id>", methods=["GET"])
 @jwt_required()
-def monitor_tasks():
-    tasks = Task.query.all()
+def monitor_tasks(id):
+    tasks = Task.query.filter_by(doctor_id=id).all()
 
     if not tasks:
         return jsonify({"message": "There are no tasks", "successful":False, "status_code": 404}), 404

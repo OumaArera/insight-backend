@@ -227,7 +227,6 @@ def get_users():
 
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "successful": True, "status_code": 200}), 200  
 
-    
 
 @app.route("/users/patient-history", methods=["POST"])
 @jwt_required()
@@ -414,7 +413,6 @@ def get_tasks(id):
     return jsonify({"data": reminders, "message": "Data retrieved successfuly",  "successful": True, "status_code": 200}), 200
 
 
-
 @app.route("/users/update/task", methods=["POST"])
 @jwt_required()
 def update_task():
@@ -449,7 +447,6 @@ def update_task():
     except Exception as err:
         db.session.rollback()
         return jsonify({"message": f"There was an error {err}", "successful": False, "status_code": 500}), 500
-
 
 
 @app.route("/users/sessions", methods=["POST"])
@@ -619,11 +616,7 @@ def get_all_tasks(id):
                 "activities":task.activities,
                 "dateTime": task.date_time,
                 "duration": task.duration,
-                "progress": task.progress,
-                "remainingTime": task.remaining_time,
-                "lastTimeCompleted": task.last_completed_time,
-                "frequency": task.frequency,
-                "numberPerDay": task.number_per_day
+                "frequency": task.frequency
             }
         )
 
@@ -858,6 +851,7 @@ def post_impressions():
         db.session.rollback()
         return jsonify({"message": f"Failed to add impression. Error: {err}", "successful": False, "status_code": 500}), 500
 
+
 @app.route("/users/get/impression/<int:id>", methods=["GET"])
 @jwt_required()
 def get_impresion(id):
@@ -967,6 +961,7 @@ def get_response():
 
     return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
 
+
 @app.route("/users/rating", methods=["POST"])
 @jwt_required()
 def post_rating_and_remarks():
@@ -1014,9 +1009,7 @@ def post_rating_and_remarks():
     except Exception as err:
         db.session.rollback()
         return jsonify({"message": f"Failed to create. Error: {err}", "successful": False, "status_code": 500}), 500
-
-
-    
+  
 
 @app.route("/users/delete/<int:id>", methods=["DELETE"])
 @jwt_required()
@@ -1055,6 +1048,61 @@ def get_users_():
         })
 
     return jsonify({"users": users_list, "successful": True}), 200
+
+
+@app.route("/users/del", methods=["GET"])
+@jwt_required()
+def remove():
+    rm = PatientHistory.query.filter_by(page_no=12).first()
+
+    data_list = []
+
+    if not rm:
+        return jsonify({"message": "Not found"}), 404
+    
+    data_list.append({
+        "id":rm.id,
+        "userId":rm.user_id,
+        "pageNo":rm.page_no,
+        "questions":rm.questions,
+        "dateTime":rm.date_time.isoformat()
+    })
+    
+    
+    return jsonify({"message":"removed successfully", "data": data_list}), 200
+
+
+@app.route("/users/monitor", methods=["GET"])
+@jwt_required()
+def monitor_tasks():
+    tasks = Task.query.all()
+
+    if not tasks:
+        return jsonify({"message": "There are no tasks", "successful":False, "status_code": 404}), 404
+    
+    tasks_list = []
+    
+    for task in tasks:
+        completed_tasks = CompletedTask.query.filter_by(task_id=task.id).all()
+
+
+        for completed_task in completed_tasks:
+            tasks_list.append({
+                "id":completed_task.id,
+                "taskId":completed_task.task_id,
+                "patientId":completed_task.patient_id,
+                "patientName": task.patient_name,
+                "dateCompleted": completed_task.completed_time,
+                "activity": task.activities,
+                "duration": task.duration,
+                "frequency": task.frequency
+            })
+
+    return jsonify({"message": "Data retrieved successfully", "data": tasks_list, "successful":True, "status_code": 200}), 200
+
+
+
+
 
 
 if __name__ == '__main__':

@@ -240,13 +240,14 @@ def post_patient_history():
 
         user_data = json.loads(decrypted_data)
 
-        if not all(key in user_data for key in ('userId', 'pageNo', 'questions', 'date')):
+        if not all(key in user_data for key in ('userId', 'pageNo', 'questions', 'date', "approval")):
             return jsonify({"message": "Incomplete user data received", "status_code": 400, "successful": False}), 400
 
         page_no = user_data.get("pageNo")
         user_id = user_data.get("userId")
         questions = user_data.get("questions")
         date = user_data.get("date")
+        approval = user_data.get("approval")
 
         try:
             page_no = int(page_no)
@@ -273,7 +274,8 @@ def post_patient_history():
             user_id=user_id,
             page_no=page_no,
             date_time=date,
-            questions=questions
+            questions=questions,
+            approval=approval
         )
 
         db.session.add(new_history)
@@ -699,6 +701,7 @@ def get_patients_history():
             "id": patient.id,
             "patientId": patient.user_id,
             "pageNo": patient.page_no,
+            "approval": patient.approval,
             "history": patient.questions,
             "patientName": f"{patient_data.first_name} {patient_data.last_name}",
             "dateTime": patient.date_time.isoformat()
@@ -1101,7 +1104,18 @@ def monitor_tasks(id):
     return jsonify({"message": "Data retrieved successfully", "data": tasks_list, "successful":True, "status_code": 200}), 200
 
 
+@app.route("/users/remove", methods=["DELETE"])
+def remove_history():
+    data = PatientHistory.query.all()
 
+    if not data:
+        return jsonify({"message": "You have no history", "successful": False, "status_code": 404}), 404
+    
+    for datum in data:
+        db.session.delete(datum)
+        db.session.commit()
+
+    return jsonify({"message": "All data deleted", "successful": True, "status_code": 200}), 200
 
 
 

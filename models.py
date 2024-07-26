@@ -26,6 +26,7 @@ class PatientHistory(db.Model):
     page_no = db.Column(db.Integer, nullable=False)
     questions = db.Column(JSONB, nullable=False)
     date_time = db.Column(db.DateTime, nullable=False)
+    approval = db.Column(db.String(500), nullable=False)
 
     user = db.relationship('User', backref=db.backref('patients_history', lazy=True))
 

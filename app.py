@@ -573,7 +573,7 @@ def book_session(id):
 def get_patient_booking(id):
     
     sessions = Session.query.filter(
-        (Session.patient_id == id) | (Session.physician_id == id),
+        (Session.patient_id == id) | (Session.doctor_id == id),
         Session.approved == True
     ).all()
     

@@ -461,45 +461,42 @@ def create_sessions():
     if not all(field in data for field in required_fields):
         return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
 
-    # date : "2024-08-01 10:00"
-    # CreateSessions.jsx:51 meetingType : "online"
-    # CreateSessions.jsx:51 location : "url"
-    # CreateSessions.jsx:51 userId : 8
-    # CreateSessions.jsx:51 approved : false
     
     try:
-        physician_id = int(data['physicianId'])
-        available = bool(data['available'])
-        location = str(data['location'])
-        meeting_url = str(data['meetingUrl']) if 'meetingUrl' in data else None
-        meeting_location = str(data['meetingLocation']) if 'meetingLocation' in data else None
-        start_time = datetime.strptime(data['start_time'], "%Y-%m-%d %H:%M")
-        end_time = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M")
-        session_time = datetime.strptime(data['session_time'], "%Y-%m-%d %H:%M")
-        patient_id = int(data['patient_id']) if 'patient_id' in data else None
+        # Convert date string to datetime object
+        date = data.get("date")
+        date = datetime.strptime(date, "%Y-%m-%d %H:%M")
 
-        # Check for overlapping sessions for the same physician
-        overlapping_session = Session.query.filter(
-            Session.physician_id == physician_id,
-            Session.start_time < end_time,
-            Session.end_time > start_time
-        ).first()
+        # Convert meeting_type to string and validate
+        meeting_type = str(data.get("meetingType"))
+        if meeting_type not in ["online", "physical"]:
+            raise ValueError("Invalid meeting type")
 
-        if overlapping_session:
-            return jsonify({"message": "There is already another session at the specified time", "successful": False, "status_code": 400}), 400
+        # Convert location to string
+        location = str(data.get("location"))
 
-    except (ValueError, TypeError) as e:
-        return jsonify({"message": f"Invalid data type provided: {str(e)}", "successful": False, "status_code": 400}), 400
+        # Convert patient_id and doctor_id to integers
+        patient_id = int(data.get("userId"))
+        doctor_id = int(data.get("doctorId"))
+
+        # Convert approved to boolean
+        approved = bool(data.get("approved"))
+
+    except ValueError as err:
+        return jsonify({"message": f"Validation error: {str(err)}", "successful": False, "status_code": 400}), 400
+    except TypeError as err:
+        return jsonify({"message": f"Type error: {str(err)}", "successful": False, "status_code": 400}), 400
+    except Exception as err:
+        return jsonify({"message": f"Unexpected error: {str(err)}", "successful": False, "status_code": 500}), 500
+
+
 
     new_session = Session(
-        physician_id=physician_id,
-        available=available,
+        date=date,
+        meeting_type=meeting_type,
         location=location,
-        meeting_url=meeting_url,
-        meeting_location=meeting_location,
-        start_time=start_time,
-        end_time=end_time,
-        session_time=session_time,
+        doctor_id=doctor_id,
+        approved=approved,
         patient_id=patient_id
     )
 
@@ -1038,7 +1035,7 @@ def delete_user(id):
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
     
 
-@app.route("/users/doctors", methods=["GET"])
+@app.route("/users/users", methods=["GET"])
 @jwt_required()
 def get_users_():
     users = User.query.all()
@@ -1053,7 +1050,7 @@ def get_users_():
             "role": user.role,
             })
 
-    # return jsonify({"doctors": users_list, "successful": True}), 200
+    # return jsonify({"users": users_list, "successful": True}), 200
 
     user_data_json = json.dumps(users_list)
     new_iv = os.urandom(16)

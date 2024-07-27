@@ -468,8 +468,14 @@ def create_sessions():
     doctor_id = data.get("doctorId")
     approved = data.get("approved")
 
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+    except Exception as err:
+        return jsonify({"message": "Invalid date format", "successful": False, "status_code": 400}), 400
+
     new_session = Session(
-        date=date_str,
+        date=date,
         meeting_type=meeting_type,
         location=location,
         doctor_id=doctor_id,

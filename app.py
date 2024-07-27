@@ -457,7 +457,7 @@ def update_task():
 def create_sessions():
     data = request.get_json()
 
-    required_fields = ['physicianId', 'available', "location", "meetingUrl", "meetingLocation", "start_time", "end_time", "session_time"]
+    required_fields = ['date', "meetingType", "location", "userId", "doctorId", "approved"]
     if not all(field in data for field in required_fields):
         return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
 

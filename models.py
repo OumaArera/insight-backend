@@ -64,7 +64,7 @@ class Session(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     doctor_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
     location = db.Column(db.String(200), nullable=False)
-    meeting_type = db.Column(db.DateTime, nullable=False)
+    meeting_type = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, nullable=False)
     patient_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
     approved = db.Column(db.Boolean, nullable=False)

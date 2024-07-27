@@ -1028,7 +1028,7 @@ def delete_user(id):
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
     
 
-@app.route("/users/users", methods=["GET"])
+@app.route("/users/doctors", methods=["GET"])
 @jwt_required()
 def get_users_():
     users = User.query.all()

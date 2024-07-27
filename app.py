@@ -461,35 +461,12 @@ def create_sessions():
     if not all(field in data for field in required_fields):
         return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
 
-    
-    try:
-        # Convert date string to datetime object
-        date = data.get("date")
-        date = datetime.strptime(date, "%Y-%m-%d %H:%M")
-
-        # Convert meeting_type to string and validate
-        meeting_type = str(data.get("meetingType"))
-        if meeting_type not in ["online", "physical"]:
-            raise ValueError("Invalid meeting type")
-
-        # Convert location to string
-        location = str(data.get("location"))
-
-        # Convert patient_id and doctor_id to integers
-        patient_id = int(data.get("userId"))
-        doctor_id = int(data.get("doctorId"))
-
-        # Convert approved to boolean
-        approved = bool(data.get("approved"))
-
-    except ValueError as err:
-        return jsonify({"message": f"Validation error: {str(err)}", "successful": False, "status_code": 400}), 400
-    except TypeError as err:
-        return jsonify({"message": f"Type error: {str(err)}", "successful": False, "status_code": 400}), 400
-    except Exception as err:
-        return jsonify({"message": f"Unexpected error: {str(err)}", "successful": False, "status_code": 500}), 500
-
-
+    date = data.get("date")
+    meeting_type = data.get("meetingType")
+    location = data.get("location")
+    patient_id = data.get("userId")
+    doctor_id = data.get("doctorId")
+    approved = data.get("approved")
 
     new_session = Session(
         date=date,

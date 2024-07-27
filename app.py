@@ -524,15 +524,12 @@ def get_all_sessions():
         for session in sessions:
             session_data = {
                 "id": session.id,
-                "physicianId": session.physician_id,
-                "available": session.available,
+                "physicianId": session.doctor_id,
+                "meetingType": session.meeting_type,
                 "location": session.location,
-                "meetingUrl": session.meeting_url,
-                "meetingLocation": session.meeting_location,
-                "start_time": session.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "end_time": session.end_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "session_time": session.session_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "patient_id": session.patient_id
+                "date": session.date,
+                "patient_id": session.patient_id,
+                "approved": session.approved
             }
             session_list.append(session_data)
 
@@ -574,12 +571,10 @@ def book_session(id):
 @app.route("/users/get/booking/<int:id>", methods=["GET"])
 @jwt_required()
 def get_patient_booking(id):
-    current_time = datetime.now()
     
     sessions = Session.query.filter(
         (Session.patient_id == id) | (Session.physician_id == id),
-        Session.available == False,
-        Session.start_time > current_time 
+        Session.approved == True
     ).all()
     
     if not sessions:
@@ -589,14 +584,12 @@ def get_patient_booking(id):
     for session in sessions:
         formatted_sessions.append({
             "id": session.id,
-            "physician_id": session.physician_id,
+            "physicianId": session.doctor_id,
             "location": session.location,
-            "meeting_url": session.meeting_url,
-            "meeting_location": session.meeting_location,
-            "start_time": session.start_time.strftime('%Y-%m-%d %H:%M:%S'),
-            "end_time": session.end_time.strftime('%Y-%m-%d %H:%M:%S'),
-            "session_time": session.session_time.strftime('%Y-%m-%d %H:%M:%S'),
-            "patient_id": session.patient_id
+            "meetingType": session.meeting_type,
+            "date": session.date,
+            "patientId": session.patient_id,
+            "approved": session.approved
         })
     
     return jsonify({"sessions": formatted_sessions, "message": "Upcoming sessions retrieved successfully", "successful": True, "status_code": 200}), 200

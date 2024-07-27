@@ -468,16 +468,8 @@ def create_sessions():
     doctor_id = data.get("doctorId")
     approved = data.get("approved")
 
-    # Validate and parse the date
-    try:
-        date = datetime.strptime(date_str, '%Y-%m-%d %H:%M')
-        # Convert to ISO 8601 format
-        date_iso_format = date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    except ValueError:
-        return jsonify({"message": "Invalid date format. Use 'YYYY-MM-DD HH:MM'", "successful": False, "status_code": 400}), 400
-
     new_session = Session(
-        date=date_iso_format,
+        date=date_str,
         meeting_type=meeting_type,
         location=location,
         doctor_id=doctor_id,

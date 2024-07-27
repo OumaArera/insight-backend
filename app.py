@@ -304,6 +304,7 @@ def get_history(user_id):
             "user_id": hist.user_id,
             "page_no": hist.page_no,
             "questions": hist.questions,
+            "approval": hist.approval,
             "date": hist.date_time.isoformat()
         })
 
@@ -460,6 +461,12 @@ def create_sessions():
     if not all(field in data for field in required_fields):
         return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
 
+    # date : "2024-08-01 10:00"
+    # CreateSessions.jsx:51 meetingType : "online"
+    # CreateSessions.jsx:51 location : "url"
+    # CreateSessions.jsx:51 userId : 8
+    # CreateSessions.jsx:51 approved : false
+    
     try:
         physician_id = int(data['physicianId'])
         available = bool(data['available'])
@@ -1031,26 +1038,34 @@ def delete_user(id):
         return jsonify({"message": f"Failed to delete {user.first_name} {user.last_name}: Error: {err}", "successful": False, "status_code": 500}), 500 
     
 
-@app.route("/users/users", methods=["GET"])
+@app.route("/users/doctors", methods=["GET"])
 @jwt_required()
 def get_users_():
     users = User.query.all()
 
     users_list = []
     for user in users:
-        users_list.append({
+        if user.role == "doctor" and user.status == "active":
+            users_list.append({
             "id": user.id,
             "first_name": user.first_name,
             "last_name": user.last_name,
             "role": user.role,
-            "email": user.email,
-            "status": user.status,
-            "password": user.password,
-            "created_at": user.created_at.isoformat(),
-            "last_login": user.last_login.isoformat()
-        })
+            })
 
-    return jsonify({"users": users_list, "successful": True}), 200
+    # return jsonify({"doctors": users_list, "successful": True}), 200
+
+    user_data_json = json.dumps(users_list)
+    new_iv = os.urandom(16)
+    cipher = AES.new(ENCRYPTION_KEY.encode("utf-8"), AES.MODE_CBC, new_iv)
+    padded_user_data = user_data_json + (AES.block_size - len(user_data_json) % AES.block_size) * "\0"
+    encrypted_user_data = cipher.encrypt(padded_user_data.encode("utf-8"))
+
+    encrypted_user_data_b64 = base64.b64encode(encrypted_user_data).decode("utf-8")
+    iv_b64 = new_iv.hex()
+
+    return jsonify({"ciphertext": encrypted_user_data_b64, "iv": iv_b64, "message": "Data retrived successfully", "status_code": 200, "successful": True}), 200
+
 
 
 @app.route("/users/del", methods=["GET"])
@@ -1121,3 +1136,6 @@ def remove_history():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5555, debug=True)
+
+
+

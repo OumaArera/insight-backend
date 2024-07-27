@@ -461,15 +461,23 @@ def create_sessions():
     if not all(field in data for field in required_fields):
         return jsonify({"message": "Incomplete data provided", "successful": False, "status_code": 400}), 400
 
-    date = data.get("date")
+    date_str = data.get("date")
     meeting_type = data.get("meetingType")
     location = data.get("location")
     patient_id = data.get("userId")
     doctor_id = data.get("doctorId")
     approved = data.get("approved")
 
+    # Validate and parse the date
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d %H:%M')
+        # Convert to ISO 8601 format
+        date_iso_format = date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    except ValueError:
+        return jsonify({"message": "Invalid date format. Use 'YYYY-MM-DD HH:MM'", "successful": False, "status_code": 400}), 400
+
     new_session = Session(
-        date=date,
+        date=date_iso_format,
         meeting_type=meeting_type,
         location=location,
         doctor_id=doctor_id,
